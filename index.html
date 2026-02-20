@@ -96,13 +96,11 @@
 
 <script>
 // --- KONFIGURASI AI ---
-// Masukkan API Key Anda di sini untuk mencoba, tapi baca peringatan di bawah!
-const apiKey = "AIzaSyDPW9XxZhIDF483y0BvaNYX2Dl7OzXn-h0"; 
+const apiKey = "AIzaSyBxCR3_l1XZpFyGL3Jxzj0L66IpmZspcMU"; 
 
 async function fetchAIResponse(userQuery, chatHistory) {
-    // Menggunakan model 1.5-flash yang lebih stabil
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
+    // Menggunakan model gemini-2.0-flash sesuai dengan permintaan Anda
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const systemPrompt = "Anda adalah 'Sensei AI' di aplikasi Ureshii Nihongo. Bantu pembelajar memahami kosakata JLPT N5. Jawab dalam Bahasa Indonesia yang ramah, singkat, dan beri contoh jika perlu. Fokus hanya pada materi bahasa Jepang.";
     
     // Format pesan untuk Gemini API
