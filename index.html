@@ -7,6 +7,10 @@
   
   <script src="https://cdn.tailwindcss.com"></script>
   
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     
@@ -17,116 +21,217 @@
       margin: 0; 
       overflow-x: hidden;
     }
-    .transform-style-3d { transform-style: preserve-3d; }
-    .backface-hidden { backface-visibility: hidden; }
+    
+    /* Utilities Animasi & 3D */
+    .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .view-section.active { display: flex; flex-direction: column; align-items: center; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    
     .perspective-1000 { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; transition: transform 0.5s; }
+    .backface-hidden { backface-visibility: hidden; }
     .rotate-y-180 { transform: rotateY(180deg); }
     .shadow-neon-blue { box-shadow: 0 0 30px rgba(37, 99, 235, 0.4); }
     
     /* Custom Scrollbar */
     .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { 
-      background: #3b82f6; 
-      border-radius: 20px; 
-      border: 2px solid #020617; 
-    }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 20px; border: 2px solid #020617; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   </style>
-
-  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-  
-  <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "framer-motion": "https://esm.sh/framer-motion@10.16.4?bundle",
-        "lucide-react": "https://esm.sh/lucide-react@0.292.0?bundle"
-      }
-    }
-  </script>
-
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body>
-  <div id="root"></div>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center relative">
 
-  <script type="text/babel" data-type="module">
-    import React, { useState, useEffect, useRef, useMemo } from 'react';
-    import { createRoot } from 'react-dom/client';
-    import { AnimatePresence, motion } from 'framer-motion';
-    import {
-      Gamepad2, Brain, Timer, ArrowLeft, RefreshCw, Trophy, Heart, Eye,
-      Type, CheckCircle2, XCircle, BookOpen, ChevronRight, Languages,
-      Info, User, Target, Sparkles, HelpCircle, Check, Volume2,
-      MessageSquare, Send, Loader2, X
-    } from 'lucide-react';
+  <div id="modal-tutorial" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="bg-gray-900 border-2 border-blue-500/50 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl">
+      <div class="bg-blue-600 p-6 flex items-center gap-3">
+        <i class="fa-solid fa-circle-question text-3xl"></i>
+        <h2 class="text-2xl font-black uppercase italic tracking-tight">Cara Belajar</h2>
+      </div>
+      <div class="p-8 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar text-left">
+        <section>
+          <h3 class="text-blue-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic"><span class="bg-blue-500/20 w-8 h-8 rounded-full flex items-center justify-center not-italic">1</span> Mulai dengan Flashcard</h3>
+          <div class="pl-10 text-gray-300 space-y-2 text-sm">
+            <p class="font-bold text-white leading-tight">Belum hafal kosakata? Jangan khawatir!</p>
+            <ul class="list-disc list-inside"><li>Pilih kategori kosakata.</li><li>Klik fitur <span class="text-blue-400 font-bold uppercase text-white">Flashcard</span>.</li><li>Ketuk kartu untuk melihat arti & dengarkan suaranya.</li></ul>
+          </div>
+        </section>
+        <section>
+          <h3 class="text-purple-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic"><span class="bg-purple-500/20 w-8 h-8 rounded-full flex items-center justify-center not-italic">2</span> Uji Kemampuanmu</h3>
+          <p class="pl-10 text-gray-300 text-sm">Sudah merasa faham? Yuk, tes ingatanmu dengan mengerjakan <span class="text-purple-400 font-bold uppercase text-white">Kuis</span>.</p>
+        </section>
+      </div>
+      <div class="p-6 bg-gray-800/50 border-t border-white/5">
+        <button onclick="document.getElementById('modal-tutorial').classList.add('hidden')" class="w-full bg-blue-600 py-4 rounded-2xl font-black shadow-neon-blue hover:bg-blue-500 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"><i class="fa-solid fa-check"></i> Paham & Lanjutkan</button>
+      </div>
+    </div>
+  </div>
 
-    // --- UTILITAS GLOBAL & KONFIGURASI AI ---
-    
-    // CATATAN PENTING: Mengekspos API Key di frontend sangat tidak aman!
+  <div class="fixed bottom-6 right-6 z-[100]">
+    <div id="ai-chat-window" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div class="bg-gray-900 border-2 border-blue-500 rounded-[2.5rem] w-[320px] sm:w-[350px] h-[480px] shadow-2xl flex flex-col overflow-hidden relative">
+        <div class="bg-blue-600 p-4 flex justify-between items-center">
+          <div class="flex items-center gap-2 font-black uppercase text-xs tracking-wider"><i class="fa-solid fa-wand-magic-sparkles"></i> Tanya Sensei AI</div>
+          <button onclick="toggleChat()" class="hover:bg-blue-700 p-1 rounded-full transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950">
+          </div>
+        <div class="p-4 bg-gray-900 border-t border-white/10 flex gap-2">
+          <input type="text" id="chat-input" placeholder="Ketik pertanyaan..." class="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 transition-all" onkeypress="handleChatKeyPress(event)">
+          <button onclick="sendChatMessage()" class="bg-blue-600 p-2 rounded-xl hover:bg-blue-500 transition-all shadow-lg active:scale-90"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+    <button id="ai-chat-btn" onclick="toggleChat()" class="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center shadow-neon-blue hover:scale-110 active:scale-95 transition-all animate-[pulse-soft_2s_ease-in-out_infinite]"><i class="fa-solid fa-message text-2xl"></i></button>
+  </div>
+
+  <div id="app-container" class="w-full h-full flex justify-center p-4 relative z-10">
+
+    <div id="view-home" class="view-section active text-center w-full">
+      <h1 class="text-8xl font-black italic mb-12 tracking-tighter uppercase leading-none">URESHII <span class="text-blue-500 block text-3xl not-italic tracking-[0.5em] font-bold mt-4 uppercase">Nihongo</span></h1>
+      <div class="flex flex-col gap-4 items-center">
+        <button onclick="navigateTo('categories'); showTutorialOnce();" class="bg-blue-600 px-16 py-5 rounded-full font-black text-2xl shadow-neon-blue hover:bg-blue-500 transition-all border-b-8 border-blue-800 active:border-b-0 active:translate-y-1">MULAI BELAJAR</button>
+        <button onclick="navigateTo('about')" class="flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors bg-gray-800/50 px-6 py-2 rounded-full border border-blue-500/20"><i class="fa-solid fa-circle-info"></i> About Me</button>
+      </div>
+    </div>
+
+    <div id="view-about" class="view-section w-full max-w-4xl p-10 bg-gray-900/80 backdrop-blur-xl rounded-[3rem] border-2 border-blue-500/30 shadow-2xl overflow-y-auto max-h-[85vh] text-center">
+      <div class="flex justify-start w-full mb-8"><button onclick="navigateTo('home')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><i class="fa-solid fa-arrow-left"></i></button></div>
+      <div class="space-y-10 w-full">
+        <section class="text-center">
+          <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-neon-blue text-4xl"><i class="fa-solid fa-user"></i></div>
+          <h2 class="text-3xl font-black mb-2 uppercase">Halo! Selamat datang di platform ini.</h2>
+          <p class="text-lg leading-relaxed text-center">Saya <span class="text-blue-400 font-bold">Amelia Rafika Prameswari Basuki</span> (NIM: 2302422068), seorang mahasiswa yang memiliki dedikasi dalam dunia pendidikan. Website ini adalah prototipe media pembelajaran digital untuk pemelajar bahasa Jepang pemula.</p>
+        </section>
+        <hr class="border-white/10" />
+        <section class="text-left">
+          <h3 class="text-2xl font-black text-blue-400 mb-4 flex items-center gap-3 uppercase italic"><i class="fa-solid fa-bullseye"></i> Misi dan Tujuan</h3>
+          <p class="leading-relaxed">Sebagai syarat kelulusan gelar Sarjana Pendidikan (S1), website ini dikembangkan untuk mengeksplorasi efektivitas media interaktif dalam mempermudah penguasaan kosa kata JLPT N5 secara digital.</p>
+        </section>
+      </div>
+    </div>
+
+    <div id="view-categories" class="view-section w-full max-w-4xl p-6 text-center">
+      <div class="flex items-center gap-4 mb-2">
+        <button onclick="navigateTo('home')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 class="text-4xl font-black uppercase tracking-tight w-full text-center">Kategori Materi</h2>
+      </div>
+      <p class="text-blue-400 font-black mb-8 text-sm uppercase tracking-widest w-full text-center">Pilih kategori materi yang ingin dipelajari.</p>
+      <div id="categories-container" class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-14 w-full"></div>
+      
+      <div class="bg-gradient-to-br from-indigo-900 to-purple-950 p-8 rounded-[3rem] border-2 border-white/10 shadow-2xl w-full">
+        <h3 class="text-2xl font-black text-yellow-400 mb-8 flex items-center justify-center gap-3 italic uppercase"><i class="fa-solid fa-gamepad"></i> Main Game Seru!</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-blue-600" onclick="startGame('match')">Memory Match</button>
+          <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-pink-600" onclick="startGame('speed')">Speed Translator</button>
+          <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-yellow-600 text-black" onclick="startGame('scramble')">Word Scramble</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-subcategories" class="view-section w-full max-w-md p-6 text-center">
+      <div class="flex items-center gap-4 mb-2 w-full">
+        <button onclick="navigateTo('categories')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 id="subcat-title" class="text-3xl font-black text-blue-400 uppercase tracking-widest leading-tight w-full text-center"></h2>
+      </div>
+      <p class="text-blue-400 font-black mb-10 text-xs uppercase tracking-widest">Pilih salah satu sub-kategori.</p>
+      <div id="subcategories-container" class="space-y-4 w-full"></div>
+    </div>
+
+    <div id="view-mode" class="view-section text-center p-14 bg-gray-800 rounded-[3rem] border-4 border-blue-600 shadow-2xl max-w-sm relative w-full">
+      <button onclick="navigateTo('subcategories')" class="absolute top-6 left-6 p-2 bg-gray-700 rounded-full"><i class="fa-solid fa-arrow-left"></i></button>
+      <h2 id="mode-title" class="text-4xl font-black mb-2 uppercase italic"></h2>
+      <p class="text-blue-400 font-black mb-10 text-xs uppercase tracking-widest">Pilih mode belajar kamu.</p>
+      <div class="flex flex-col gap-5">
+        <button class="bg-blue-600 py-5 px-10 rounded-2xl font-black text-xl shadow-neon-blue hover:bg-blue-500" onclick="startMode('flashcards')"><i class="fa-solid fa-arrows-rotate mr-2"></i> Flashcard</button>
+        <button class="bg-purple-600 py-5 px-10 rounded-2xl font-black text-xl shadow-lg hover:bg-purple-500" onclick="startMode('quiz')"><i class="fa-solid fa-brain mr-2"></i> Kuis</button>
+      </div>
+    </div>
+
+    <div id="view-flashcards" class="view-section w-full max-w-5xl p-4 text-center">
+      <div class="w-full flex justify-start mb-6"><button onclick="navigateTo('mode')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700"><i class="fa-solid fa-arrow-left"></i></button></div>
+      <h2 id="flashcard-title" class="text-2xl font-black mb-2 text-blue-400 uppercase italic"></h2>
+      <p class="text-blue-400 font-black mb-8 text-xs uppercase">Ketuk flashcard untuk melihat maksud.</p>
+      <div id="flashcards-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 w-full overflow-y-auto max-h-[60vh] p-4 custom-scrollbar"></div>
+      <button class="mt-12 bg-gray-700 py-4 px-20 rounded-full font-black text-lg hover:bg-gray-600" onclick="navigateTo('mode')">Selesai</button>
+    </div>
+
+    <div id="view-quiz" class="view-section w-full max-w-2xl p-4 text-center">
+      <div class="flex justify-between w-full mb-8 items-center px-6">
+        <button onclick="navigateTo('mode')" class="p-2 bg-gray-800 rounded-full"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="font-black text-blue-400 italic text-2xl uppercase" id="quiz-score-display">Skor: 0</div>
+        <div id="quiz-lives" class="flex gap-1.5 bg-black/30 px-4 py-2 rounded-full"></div>
+      </div>
+      <div class="w-full h-4 bg-gray-800 rounded-full mb-14 overflow-hidden border border-white/5 p-1">
+        <div id="quiz-progress" class="h-full bg-blue-500 rounded-full transition-all shadow-neon-blue" style="width: 0%"></div>
+      </div>
+      <div id="quiz-question-container" class="w-full flex flex-col items-center"></div>
+    </div>
+
+    <div id="view-review" class="view-section w-full max-w-4xl p-6 text-center">
+      <div id="review-header-result" class="bg-gray-800 p-12 rounded-[3rem] border-2 border-blue-500 text-center max-w-sm w-full shadow-2xl mx-auto hidden">
+        <i class="fa-solid fa-trophy text-yellow-400 text-6xl mb-6"></i>
+        <h2 class="text-4xl font-black mb-2 uppercase">KUIS SELESAI</h2>
+        <p id="review-final-score" class="text-6xl font-black text-blue-400 mb-12"></p>
+        <div class="flex flex-col gap-4">
+          <button class="bg-blue-600 py-4 rounded-2xl font-black text-lg hover:bg-blue-500" onclick="startMode('quiz')">Ulang Kuis</button>
+          <button class="bg-gray-700 py-4 rounded-2xl font-black text-lg hover:bg-gray-600" onclick="showQuizAnalysis()">Analisis Jawaban</button>
+          <button class="text-gray-500 font-black mt-6 hover:text-white" onclick="navigateTo('mode')">Kembali</button>
+        </div>
+      </div>
+      <div id="review-analysis" class="w-full hidden flex flex-col items-center">
+        <div class="w-full flex justify-start mb-8"><button onclick="document.getElementById('review-analysis').classList.add('hidden'); document.getElementById('review-header-result').classList.remove('hidden');" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700"><i class="fa-solid fa-arrow-left"></i></button></div>
+        <h2 class="text-5xl font-black text-center mb-14 uppercase text-blue-400">Analisis Belajar</h2>
+        <div id="review-list" class="grid gap-6 max-h-[65vh] overflow-y-auto w-full p-4 custom-scrollbar text-left"></div>
+      </div>
+    </div>
+
+    <div id="view-game" class="view-section w-full max-w-4xl p-4 text-center">
+      <div class="flex justify-between w-full mb-8 items-center px-4">
+        <button onclick="endGame()" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2 id="game-title" class="text-3xl font-black text-blue-400 italic uppercase">Game</h2>
+      </div>
+      <div id="game-area" class="w-full flex flex-col items-center justify-center"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================
+    // 1. DATA KOSAKATA & KONFIGURASI
+    // =========================================================
+    // PERINGATAN: Kosongkan API Key saat diunggah ke publik untuk keamanan!
     const apiKey = ""; 
 
-    const speakJapanese = (text) => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ja-JP';
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
-        window.speechSynthesis.speak(utterance);
-      }
-    };
-
-    async function fetchAIResponse(userQuery, chatHistory) {
-      if (!apiKey) return "API Key belum diatur. Sensei AI tidak bisa membalas saat ini.";
-      
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-      const systemPrompt = "Anda adalah 'Sensei AI' di aplikasi Ureshii Nihongo. Bantu pembelajar memahami kosakata JLPT N5. Jawab dalam Bahasa Indonesia yang ramah, singkat, dan beri contoh jika perlu. Fokus hanya pada materi bahasa Jepang.";
-      
-      const contents = [
-        ...chatHistory.map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }]
-        })),
-        { role: "user", parts: [{ text: userQuery }] }
-      ];
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] } })
-        });
-        const result = await response.json();
-        return result.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Sensei sedang istirahat. Tanya lagi nanti ya!";
-      } catch (err) {
-        return "Koneksi terputus. Pastikan internetmu aktif!";
-      }
-    }
-
-    function shuffleArray(array) {
-      if (!array || !Array.isArray(array)) return [];
-      const newArr = [...array];
-      for (let i = newArr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-      }
-      return newArr;
-    }
-
-    // --- DATABASE KOSAKATA (Sebagian kecil ditampilkan di sini sebagai contoh struktur, paste semua data asli kamu di dalam objek ini) ---
+    // PASTE DATA KOSAKATA LENGKAP KAMU DI SINI
     const VOCAB_DATA = {
       'Percakapan Dasar': {
         'salam, sapaan, dan ungkapan': [
           { word: 'おはよう', translation: 'Selamat pagi (frank)', example: 'おはよう、ともだち。', exTrans: 'Selamat pagi, teman.' },
           { word: 'おはようございます', translation: 'Selamat pagi', example: 'せんせい、おはようございます。', exTrans: 'Selamat pagi, Guru.' },
-          { word: 'こんにちは', translation: 'Selamat siang / Halo', example: 'みなさん、こんにちは。', exTrans: 'Halo semuanya.' }
-          // ... (Paste seluruh sisa data kosakata JLPT N5 kamu yang panjang di sini untuk menjaga performa file) ...
+          { word: 'こんにちは', translation: 'Selamat siang / Halo', example: 'みなさん、こんにちは。', exTrans: 'Halo semuanya.' },
+          { word: 'こんばんは', translation: 'Selamat malam', example: 'こんばんは、おとうさん。', exTrans: 'Selamat malam, Ayah.' },
+          { word: 'おやすみなさい', translation: 'Selamat tidur', example: 'もうねます、おやすみなさい。', exTrans: 'Sudah mau tidur, selamat tidur.' },
+          { word: 'さようなら', translation: 'Sampai jumpa lagi', example: 'さようなら、またいつか。', exTrans: 'Sampai jumpa lagi suatu saat nanti.' }
+        ],
+        'Kata Seru': [
+          { word: 'ああ', translation: 'Ahh. / Aduh.', example: 'ああ、そうですか。', exTrans: 'Ahh, begitu ya.' },
+          { word: 'ええと', translation: 'Hmm. / Apa ya..', example: 'ええと、わかりません。', exTrans: 'Hmm, saya tidak tahu.' },
+          { word: 'あのう', translation: 'Permisi..', example: 'あのう、すみません。', exTrans: 'Anoo, permisi.' }
+        ]
+      },
+      'Kata Benda': {
+        'angka': [
+          { word: 'いち', translation: 'Satu', example: 'いっちばん。', exTrans: 'Nomor satu.' },
+          { word: 'に', translation: 'Dua', example: 'にじ。', exTrans: 'Jam dua.' },
+          { word: 'さん', translation: 'Tiga', example: 'さんげつ。', exTrans: 'Tiga bulan.' },
+          { word: 'し / よん', translation: 'Empat', example: 'よにん。', exTrans: 'Empat orang.' }
         ]
       }
     };
 
+    // Ekstrak semua kosakata untuk Game
     const ALL_GAME_VOCAB = [];
     Object.values(VOCAB_DATA).forEach(cat => {
       Object.values(cat).forEach(sub => {
@@ -134,387 +239,616 @@
       });
     });
 
-    // --- SUB-KOMPONEN ---
-    const FlashcardTile = ({ content, isFlipped, onClick }) => {
-      return (
-        <motion.div
-          className="relative w-full h-full cursor-pointer transition-transform duration-500 transform-style-3d shadow-neon-blue rounded-xl"
-          onClick={onClick}
-          animate={{ rotateY: isFlipped ? 180 : 0 }}
-          transition={{ duration: 0.4 }}
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="absolute inset-0 bg-gray-800 rounded-xl backface-hidden flex flex-col items-center justify-center p-4 text-white text-center font-bold border-2 border-blue-500">
-            <p className="text-blue-300 font-black text-xl mb-2 tracking-tight" onClick={(e) => { e.stopPropagation(); speakJapanese(content.word); }}>
-              {content.word}
-            </p>
-            <button onClick={(e) => { e.stopPropagation(); speakJapanese(content.word); }} className="mt-4 p-2 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-all text-white">
-              <Volume2 size={24} />
-            </button>
+    // =========================================================
+    // 2. STATE & UTILITAS GLOBAL
+    // =========================================================
+    let appState = {
+      page: 'home',
+      selectedCat: null,
+      selectedSubCat: null,
+      currentDeck: [],
+      quiz: { questions: [], idx: 0, score: 0, lives: 3, history: [] },
+      game: { id: null, timer: null, state: {} }
+    };
+
+    const shuffleArray = (array) => {
+      const newArr = [...array];
+      for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+      }
+      return newArr;
+    };
+
+    const speakJapanese = (text) => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        // Bersihkan teks dari romaji/opsi ganda (misal "し / よん" -> ambil "し")
+        const cleanText = text.split('/')[0].trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    const triggerConfetti = () => {
+      if(window.confetti) {
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      }
+    };
+
+    // =========================================================
+    // 3. NAVIGASI VIEW
+    // =========================================================
+    function navigateTo(viewId) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+      document.getElementById(`view-${viewId}`).classList.add('active');
+      appState.page = viewId;
+
+      if(viewId === 'categories') renderCategories();
+    }
+
+    function showTutorialOnce() {
+      if(!localStorage.getItem('tutorialSeen')) {
+        document.getElementById('modal-tutorial').classList.remove('hidden');
+        localStorage.setItem('tutorialSeen', 'true');
+      }
+    }
+
+    // =========================================================
+    // 4. RENDER MENU (Kategori & Subkategori)
+    // =========================================================
+    function renderCategories() {
+      const container = document.getElementById('categories-container');
+      container.innerHTML = '';
+      Object.keys(VOCAB_DATA).forEach(cat => {
+        container.innerHTML += `
+          <button class="bg-gray-800 p-8 rounded-3xl border-b-4 border-blue-700 hover:bg-gray-750 flex justify-between items-center transition-all shadow-2xl group" onclick="selectCategory('${cat}')">
+            <span class="text-2xl font-black uppercase">${cat}</span>
+            <i class="fa-solid fa-chevron-right text-blue-500 group-hover:translate-x-2 transition-transform"></i>
+          </button>
+        `;
+      });
+    }
+
+    function selectCategory(cat) {
+      appState.selectedCat = cat;
+      document.getElementById('subcat-title').innerText = cat;
+      const container = document.getElementById('subcategories-container');
+      container.innerHTML = '';
+      Object.keys(VOCAB_DATA[cat]).forEach(sub => {
+        container.innerHTML += `
+          <button class="w-full bg-gray-800 p-6 rounded-[2rem] border-l-8 border-blue-500 font-black text-xl hover:bg-blue-600 transition-all flex justify-between items-center text-left shadow-xl" onclick="selectSubCategory('${sub}')">
+            ${sub} <i class="fa-solid fa-book-open opacity-20 text-2xl"></i>
+          </button>
+        `;
+      });
+      navigateTo('subcategories');
+    }
+
+    function selectSubCategory(sub) {
+      appState.selectedSubCat = sub;
+      document.getElementById('mode-title').innerText = sub;
+      navigateTo('mode');
+    }
+
+    // =========================================================
+    // 5. FLASHCARDS
+    // =========================================================
+    function startMode(mode) {
+      const vocabList = VOCAB_DATA[appState.selectedCat][appState.selectedSubCat];
+      if (!vocabList || vocabList.length < 4) {
+        alert("Kosakata tidak cukup di kategori ini.");
+        return;
+      }
+
+      if (mode === 'flashcards') {
+        appState.currentDeck = shuffleArray(vocabList);
+        document.getElementById('flashcard-title').innerText = appState.selectedSubCat;
+        renderFlashcards();
+        navigateTo('flashcards');
+      } else if (mode === 'quiz') {
+        setupQuiz(vocabList);
+      }
+    }
+
+    function renderFlashcards() {
+      const container = document.getElementById('flashcards-container');
+      container.innerHTML = '';
+      appState.currentDeck.forEach((v, i) => {
+        const exampleHtml = v.example ? `
+          <div class="w-full bg-black/30 p-2 rounded-lg border border-white/5 mt-1 text-center">
+            <p class="text-[10px] font-bold text-blue-100 leading-tight">${v.example}</p>
+            <p class="text-[9px] italic text-gray-300 leading-tight">"${v.exTrans}"</p>
           </div>
-          <div className="absolute inset-0 bg-blue-900 rounded-xl backface-hidden flex flex-col items-center justify-center p-4 text-center text-white border-2 border-blue-400 overflow-hidden" style={{ transform: 'rotateY(180deg)' }}>
-            <p className="text-[10px] font-black uppercase text-blue-300 mb-1 text-center w-full">Arti</p>
-            <p className="text-sm font-black leading-tight text-center w-full mb-2">{content.translation}</p>
-            {content.example && (
-              <div className="w-full bg-black/30 p-2 rounded-lg border border-white/5 mt-1 text-center">
-                <p className="text-[10px] font-bold text-blue-100 leading-tight">{content.example}</p>
-                <p className="text-[9px] italic text-gray-300 leading-tight">"{content.exTrans}"</p>
+        ` : '';
+
+        container.innerHTML += `
+          <div class="aspect-[3/4] perspective-1000">
+            <div id="fc-${i}" class="relative w-full h-full cursor-pointer transform-style-3d shadow-neon-blue rounded-xl" onclick="toggleFlashcard(${i})">
+              <div class="absolute inset-0 bg-gray-800 rounded-xl backface-hidden flex flex-col items-center justify-center p-4 text-center font-bold border-2 border-blue-500">
+                <p class="text-blue-300 font-black text-xl mb-2 tracking-tight" onclick="event.stopPropagation(); speakJapanese('${v.word}')">${v.word}</p>
+                <button onclick="event.stopPropagation(); speakJapanese('${v.word}')" class="mt-4 w-10 h-10 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-all flex items-center justify-center">
+                  <i class="fa-solid fa-volume-high"></i>
+                </button>
               </div>
-            )}
-          </div>
-        </motion.div>
-      );
-    };
-
-    const QuizMultipleChoice = ({ question, onAnswer }) => {
-      if (!question) return null;
-      return (
-        <div className="flex flex-col items-center w-full text-white">
-          <motion.div key={question.word} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center bg-gray-800 text-blue-300 rounded-3xl p-10 w-full max-sm:p-6 max-w-sm mb-10 shadow-lg border-2 border-blue-500 relative">
-            <p className="text-4xl font-black tracking-tighter cursor-pointer text-white" onClick={() => speakJapanese(question.word)}>{question.word}</p>
-            <button onClick={() => speakJapanese(question.word)} className="mt-4 p-3 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-colors mx-auto flex items-center justify-center text-white"><Volume2 size={24} /></button>
-          </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
-            {question.options.map((opt, i) => (
-              <button key={i} className="bg-gray-700 py-5 px-6 rounded-2xl font-bold text-white transition-all shadow-md hover:bg-gray-600 active:scale-95" onClick={() => onAnswer(opt === question.answer, opt)}>{opt}</button>
-            ))}
-          </div>
-        </div>
-      );
-    };
-
-    const HowToPlayModal = ({ onClose }) => (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md pointer-events-auto">
-        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-gray-900 border-2 border-blue-500/50 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl text-white">
-          <div className="bg-blue-600 p-6 flex items-center gap-3"><HelpCircle size={32} /><h2 className="text-2xl font-black uppercase italic tracking-tight">Cara Belajar di Website Ini</h2></div>
-          <div className="p-8 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar text-left">
-            <section><h3 className="text-blue-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic"><span className="bg-blue-500/20 w-8 h-8 rounded-full flex items-center justify-center not-italic">1</span> Mulai dengan Flashcard</h3><div className="pl-10 text-gray-300 space-y-2"><p className="font-bold text-white leading-tight">Belum hafal kosakata? Jangan khawatir!</p><ul className="list-disc list-inside text-sm"><li>Pilih kategori kosakata.</li><li>Klik fitur <span className="text-blue-400 font-bold uppercase text-white">Flashcard</span>.</li><li>Ketuk kartu untuk melihat arti, dan dengarkan suaranya.</li></ul></div></section>
-            <section><h3 className="text-purple-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic"><span className="bg-purple-500/20 w-8 h-8 rounded-full flex items-center justify-center not-italic">2</span> Uji Kemampuanmu</h3><div className="pl-10 text-gray-300"><p className="text-sm leading-relaxed">Sudah merasa faham? Yuk, tes ingatanmu dengan mengerjakan <span className="text-purple-400 font-bold uppercase text-white">Kuis</span> 10 soal acak.</p></div></section>
-            <section><h3 className="text-yellow-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic"><span className="bg-yellow-500/20 w-8 h-8 rounded-full flex items-center justify-center not-italic">3</span> Bingung? Tanya Sensei AI</h3><div className="pl-10 text-gray-300"><p className="text-sm leading-relaxed">Ketuk ikon <span className="text-blue-500 font-bold uppercase">Pesan</span> di pojok kanan bawah jika bingung materi!</p></div></section>
-          </div>
-          <div className="p-6 bg-gray-800/50 border-t border-white/5"><button onClick={onClose} className="w-full bg-blue-600 py-4 rounded-2xl font-black shadow-neon-blue hover:bg-blue-500 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"><Check size={20} /> Paham & Lanjutkan</button></div>
-        </motion.div>
-      </motion.div>
-    );
-
-    const AIHelpChat = () => {
-      const [isOpen, setIsOpen] = useState(false);
-      const [messages, setMessages] = useState([{ role: 'model', text: 'Halo! Saya Sensei AI. Ada kosakata yang membingungkan? Tanya saja saya ya!' }]);
-      const [inputValue, setInputValue] = useState('');
-      const [isTyping, setIsTyping] = useState(false);
-      const scrollRef = useRef(null);
-
-      useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
-
-      const handleSendMessage = async () => {
-        if (!inputValue.trim() || isTyping) return;
-        const userMsg = inputValue.trim();
-        setInputValue('');
-        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-        setIsTyping(true);
-        const aiResponse = await fetchAIResponse(userMsg, messages);
-        setMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
-        setIsTyping(false);
-      };
-
-      return (
-        <div className="fixed bottom-6 right-6 z-[100]">
-          <AnimatePresence>
-            {isOpen && (
-              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm pointer-events-auto">
-                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="bg-gray-900 border-2 border-blue-500 rounded-[2.5rem] w-[320px] sm:w-[350px] h-[480px] shadow-2xl flex flex-col overflow-hidden relative text-white">
-                  <div className="bg-blue-600 p-4 flex justify-between items-center">
-                    <div className="flex items-center gap-2 font-black uppercase text-xs tracking-wider"><Sparkles size={18} /> Tanya Sensei AI</div>
-                    <button onClick={() => setIsOpen(false)} className="hover:bg-blue-700 p-1 rounded-full transition-colors"><X size={24} /></button>
-                  </div>
-                  <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950">
-                    {messages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] p-3 rounded-[1.2rem] text-xs font-bold leading-relaxed ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none shadow-lg' : 'bg-gray-800 text-slate-200 rounded-tl-none border border-white/5 shadow-md'}`}>{msg.text}</div>
-                      </div>
-                    ))}
-                    {isTyping && <div className="flex justify-start animate-pulse"><div className="bg-gray-800 text-slate-400 p-2 rounded-xl rounded-tl-none text-[10px] flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Sensei sedang berpikir...</div></div>}
-                  </div>
-                  <div className="p-4 bg-gray-900 border-t border-white/10 flex gap-2">
-                    <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Ketik pertanyaan..." className="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500 transition-all" />
-                    <button onClick={handleSendMessage} className="bg-blue-600 p-2 rounded-xl hover:bg-blue-500 transition-all shadow-lg active:scale-90"><Send size={20} /></button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-          {!isOpen && <button onClick={() => setIsOpen(true)} className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center shadow-neon-blue hover:scale-110 active:scale-95 transition-all text-white animate-pulse"><MessageSquare size={32} /></button>}
-        </div>
-      );
-    };
-
-    // --- KOMPONEN GAMES ---
-    const MemoryMatchGame = ({ onBack, allVocab }) => {
-      const [level, setLevel] = useState(1);
-      const [cards, setCards] = useState([]);
-      const [flipped, setFlipped] = useState([]);
-      const [solved, setSolved] = useState([]);
-      const [previewing, setPreviewing] = useState(false);
-
-      const initLevel = (lvl) => {
-        setSolved([]); setFlipped([]); setPreviewing(true);
-        const pairCount = lvl === 1 ? 3 : lvl === 2 ? 4 : lvl === 3 ? 6 : 8;
-        
-        // Memastikan allVocab tidak kosong sebelum mencoba slice
-        if (allVocab && allVocab.length > 0) {
-            const selected = shuffleArray(allVocab).slice(0, pairCount);
-            const gameCards = [];
-            selected.forEach((v, i) => {
-                gameCards.push({ id: `a-${i}`, val: v.word, mId: i });
-                gameCards.push({ id: `b-${i}`, val: v.translation, mId: i });
-            });
-            setCards(shuffleArray(gameCards));
-            setTimeout(() => setPreviewing(false), 2000 + (lvl * 400));
-        } else {
-            setCards([]);
-            setPreviewing(false);
-        }
-      };
-
-      useEffect(() => initLevel(level), [level]);
-
-      const handleClick = (c) => {
-        if (previewing || flipped.length === 2 || solved.includes(c.id) || flipped.includes(c.id)) return;
-        const newFlipped = [...flipped, c.id];
-        setFlipped(newFlipped);
-        if (newFlipped.length === 2) {
-          const first = cards.find(x => x.id === newFlipped[0]);
-          if (first.mId === c.mId) {
-            setSolved(s => [...s, first.id, c.id]);
-            setFlipped([]);
-          } else {
-            setTimeout(() => setFlipped([]), 800);
-          }
-        }
-      };
-
-      return (
-        <div className="flex flex-col items-center w-full max-w-4xl p-4 text-center">
-          <div className="flex justify-between w-full mb-8 items-center px-4">
-            <button onClick={onBack} className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl transition-all"><ArrowLeft /></button>
-            <h2 className="text-3xl font-black text-blue-400 italic uppercase">Memory Match</h2>
-          </div>
-          {previewing && <div className="mb-6 text-yellow-400 font-black animate-pulse flex items-center justify-center gap-3 text-lg uppercase tracking-widest"><Eye size={24}/> Hafalkan Posisi Kartu!</div>}
-          <div className="flex flex-wrap justify-center gap-3 w-full max-w-3xl mx-auto overflow-y-auto max-h-[60vh] p-2 custom-scrollbar">
-            {cards.map(c => {
-              const isOpen = previewing || flipped.includes(c.id) || solved.includes(c.id);
-              return (
-                <div key={c.id} className="w-[calc(33%-12px)] sm:w-[calc(25%-12px)] aspect-square relative perspective-1000" onClick={() => handleClick(c)}>
-                  <div className={`w-full h-full transition-all duration-500 transform-style-3d relative ${isOpen ? 'rotate-y-180' : ''}`}>
-                    <div className="absolute inset-0 bg-gray-800 rounded-2xl border-2 border-gray-700 flex items-center justify-center backface-hidden shadow-2xl"><Gamepad2 className="opacity-10" /></div>
-                    <div className="absolute inset-0 bg-blue-600 rounded-2xl border-2 border-blue-400 flex items-center justify-center p-2 text-center rotate-y-180 backface-hidden shadow-neon-blue">
-                      <span className="text-[9px] sm:text-xs font-black leading-tight uppercase">{c.val}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {solved.length === cards.length && cards.length > 0 && (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-12 text-center bg-gray-800 p-8 rounded-3xl border-2 border-yellow-500 shadow-2xl">
-              <Trophy className="text-yellow-400 mx-auto mb-3" size={50} />
-              <h3 className="text-2xl font-black mb-6 uppercase">Luar Biasa! Berhasil!</h3>
-              <button className="bg-green-600 px-12 py-3 rounded-full font-black shadow-lg hover:scale-105 transition-all" onClick={() => setLevel(l => l + 1)}>Level Berikutnya</button>
-            </motion.div>
-          )}
-        </div>
-      );
-    };
-
-    const SpeedGame = ({ onBack, allVocab }) => {
-      const [target, setTarget] = useState(null);
-      const [options, setOptions] = useState([]);
-      const [timer, setTimer] = useState(8);
-      const [score, setScore] = useState(0);
-      const [isOver, setIsOver] = useState(false);
-
-      const nextRound = () => {
-        if (!allVocab || allVocab.length === 0) return onBack();
-        const correct = allVocab[Math.floor(Math.random() * allVocab.length)];
-        const others = shuffleArray(allVocab.filter(v => v.translation !== correct.translation)).slice(0, 3);
-        setTarget(correct);
-        setOptions(shuffleArray([...others.map(o => o.translation), correct.translation]));
-        setTimer(8);
-      };
-
-      useEffect(() => { nextRound(); }, []);
-
-      useEffect(() => {
-        if (timer > 0 && !isOver) { const t = setInterval(() => setTimer(v => v - 1), 1000); return () => clearInterval(t); }
-        else if (timer === 0) { setIsOver(true); }
-      }, [timer, isOver]);
-
-      const handleSelect = (ans) => { if (ans === target.translation) { setScore(s => s + 10); nextRound(); } else { setIsOver(true); } };
-
-      return (
-        <div className="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl text-center">
-          {!isOver ? (
-            <>
-              <div className="flex justify-between w-full mb-10 items-center px-2"><div className={`font-black text-3xl ${timer < 4 ? 'text-red-500 animate-pulse' : 'text-pink-400'}`}><Timer className="inline mr-2" size={28}/> {timer}s</div><div className="font-black text-2xl uppercase">Skor: {score}</div></div>
-              <motion.div key={target?.word} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-black mb-14 uppercase tracking-tighter">{target?.word}</motion.div>
-              <div className="grid grid-cols-1 gap-4 w-full">{options.map((opt, i) => (<button key={i} className="bg-gray-700 py-5 rounded-2xl font-bold hover:bg-pink-600 transition-all border border-white/5 text-lg shadow-lg" onClick={() => handleSelect(opt)}>{opt}</button>))}</div>
-            </>
-          ) : (
-            <div className="text-center py-10"><XCircle className="text-red-500 mx-auto mb-6" size={64} /><h2 className="text-4xl font-black mb-2 uppercase tracking-tighter">WAKTU HABIS!</h2><p className="text-gray-400 mb-10 font-bold text-2xl">Skor Akhir: {score}</p><button className="bg-pink-600 px-12 py-4 rounded-full font-black mb-4 w-full shadow-lg hover:bg-pink-500 transition-colors" onClick={() => { setIsOver(false); setScore(0); nextRound(); }}>Main Lagi</button><button className="text-gray-500 font-bold mt-4" onClick={onBack}>Keluar</button></div>
-          )}
-        </div>
-      );
-    };
-
-    const ScrambleGame = ({ onBack, allVocab }) => {
-      const [target, setTarget] = useState(null);
-      const [scrambled, setScrambled] = useState([]);
-      const [selected, setSelected] = useState([]);
-      const [score, setScore] = useState(0);
-      const [lives, setLives] = useState(3);
-      const [isFinished, setIsFinished] = useState(false);
-
-      const initRound = () => {
-        if (!allVocab || allVocab.length === 0) return onBack();
-        const validItems = allVocab.filter(v => v.word.length > 1);
-        const item = validItems[Math.floor(Math.random() * validItems.length)];
-        if (!item) return onBack();
-        setTarget(item);
-        setScrambled(shuffleArray(item.word.split('')));
-        setSelected([]);
-      };
-
-      useEffect(() => { initRound(); }, []);
-
-      const handleCharClick = (char, idx) => {
-        if (selected.length >= target.word.length) return;
-        const newSelected = [...selected, { char, idx }];
-        setSelected(newSelected);
-        if (newSelected.length === target.word.length) {
-          const result = newSelected.map(s => s.char).join('');
-          if (result === target.word) { setScore(s => s + 20); setTimeout(initRound, 800); }
-          else { if (lives > 1) { setLives(l => l - 1); setTimeout(initRound, 1000); } else { setLives(0); setIsFinished(true); } }
-        }
-      };
-
-      const handleRemoveChar = (indexToRemove) => { setSelected(prev => prev.filter((_, i) => i !== indexToRemove)); };
-
-      if (isFinished) { return ( <div className="text-center p-12 bg-gray-800 rounded-3xl border-4 border-yellow-600 shadow-2xl max-w-sm w-full"><Trophy size={64} className="text-yellow-400 mx-auto mb-4" /><h2 className="text-3xl font-black mb-2 uppercase">GAME OVER</h2><p className="text-5xl font-black text-blue-400 mb-10">{score}</p><button className="bg-yellow-600 px-10 py-3 rounded-full font-black shadow-lg text-gray-900 w-full mb-4" onClick={() => { setScore(0); setLives(3); setIsFinished(false); initRound(); }}>Main Lagi</button><button className="text-gray-500 font-bold" onClick={onBack}>Keluar</button></div> ); }
-
-      return (
-        <div className="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-yellow-500 shadow-2xl relative text-center">
-          <div className="flex justify-between w-full mb-8 items-center px-2"><div className="font-black text-blue-400 text-2xl uppercase">Skor: {score}</div><div className="flex gap-1 bg-black/30 p-2 rounded-full border border-white/5">{[...Array(3)].map((_, i) => (<Heart key={i} fill={i < lives ? "#ef4444" : "transparent"} className={i < lives ? "text-red-500" : "text-gray-700"} size={26} />))}</div></div>
-          <h2 className="text-2xl font-black text-yellow-500 mb-2 uppercase tracking-tighter italic">Word Scramble</h2><p className="text-gray-400 mb-10 px-4 leading-relaxed">Susun Huruf Hiragana: <br/><span className="text-white font-black text-2xl italic">"{target?.translation}"</span></p>
-          <div className="flex flex-wrap gap-2 mb-4 h-auto min-h-[4rem] items-center justify-center border-b-4 border-gray-600 w-full p-2">{selected.map((s, i) => (<motion.div key={`${s.char}-${i}`} initial={{ scale: 0 }} animate={{ scale: 1 }} whileHover={{ scale: 1.1, backgroundColor: '#dc2626' }} onClick={() => handleRemoveChar(i)} className="w-14 h-14 bg-yellow-600 rounded-2xl flex items-center justify-center font-black text-3xl shadow-xl cursor-pointer">{s.char}</motion.div>))}</div>
-          <p className="text-[10px] text-gray-500 mb-8 uppercase font-bold">*Klik huruf di atas untuk menghapus</p>
-          <div className="flex flex-wrap justify-center gap-4 mb-10">{scrambled.map((char, i) => { const isUsed = selected.some(s => s.idx === i); return (<button key={i} disabled={isUsed} className={`w-16 h-16 rounded-2xl font-black text-3xl transition-all shadow-xl ${isUsed ? 'bg-gray-700 opacity-20' : 'bg-gray-600 hover:bg-yellow-500 hover:scale-110 active:scale-95'}`} onClick={() => handleCharClick(char, i)}>{char}</button>); })}</div>
-          <button className="text-gray-500 font-bold mt-4" onClick={onBack}>Keluar</button>
-        </div>
-      );
-    };
-
-    // --- KOMPONEN UTAMA (APP) ---
-    const App = () => {
-      const [page, setPage] = useState('home');
-      const [selectedCat, setSelectedCat] = useState(null); 
-      const [currentDeck, setCurrentDeck] = useState([]);
-      const [flippedStates, setFlippedStates] = useState({});
-      const [quizState, setQuizState] = useState({ questions: [], idx: 0, score: 0, lives: 3, history: [], finished: false });
-      const [showTutorial, setShowTutorial] = useState(false);
-      const confettiCanvasRef = useRef(null);
-
-      const triggerConfetti = () => {
-        import('https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.js').then(m => {
-          if (m.default && confettiCanvasRef.current) m.default.create(confettiCanvasRef.current, { resize: true, useWorker: true })({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        });
-      };
-
-      const getVocabFromPath = (path) => {
-        if (!path) return null;
-        const parts = path.split(' > ');
-        let current = VOCAB_DATA;
-        for (const part of parts) {
-          if (!current || !current[part]) return null;
-          current = current[part];
-        }
-        return current;
-      };
-
-      const startQuiz = (path) => {
-        const vocab = getVocabFromPath(path);
-        if (!Array.isArray(vocab) || vocab.length < 4) return alert("Materi tidak cukup.");
-        const shuffledFullPool = shuffleArray([...vocab]);
-        const selectedVocab = shuffledFullPool.slice(0, 10);
-        const qs = selectedVocab.map(v => {
-          const others = vocab.filter(x => x.translation !== v.translation);
-          return { word: v.word, question: v.word, answer: v.translation, options: shuffleArray([...shuffleArray(others).slice(0, 3).map(o => o.translation), v.translation]) };
-        });
-        setQuizState({ questions: qs, idx: 0, score: 0, lives: 3, history: [], finished: false });
-        setPage('quiz');
-      };
-
-      const handleQuizAnswer = (correct, ans) => {
-        const q = quizState.questions[quizState.idx];
-        const newHistory = [...quizState.history, { question: q, selectedAnswer: ans, isCorrect: correct }];
-        if (correct) setQuizState(s => ({ ...s, score: s.score + 100, history: newHistory }));
-        else setQuizState(s => ({ ...s, lives: Math.max(0, s.lives - 1), history: newHistory }));
-        setTimeout(() => {
-          setQuizState(s => {
-            const next = s.idx + 1;
-            if (s.lives <= 0 || next >= s.questions.length) { if (s.lives > 0) triggerConfetti(); return { ...s, finished: true }; }
-            return { ...s, idx: next };
-          });
-        }, 1000);
-      };
-
-      const renderContent = () => {
-        switch (page) {
-          case 'home': return (<div className="text-center"><motion.h1 initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-8xl font-black italic mb-12 tracking-tighter uppercase leading-none text-center w-full">URESHII <span className="text-blue-500 block text-3xl not-italic tracking-[0.5em] font-bold mt-4 uppercase text-center w-full">Nihongo</span></motion.h1><div className="flex flex-col gap-4 items-center"><button className="bg-blue-600 px-16 py-5 rounded-full font-black text-2xl shadow-neon-blue hover:bg-blue-500 transition-all border-b-8 border-blue-800 active:border-b-0 active:translate-y-1" onClick={() => { setPage('categories'); setShowTutorial(true); }}>MULAI BELAJAR</button><button className="flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors bg-gray-800/50 px-6 py-2 rounded-full border border-blue-500/20" onClick={() => setPage('about')}><Info size={18} /> About Me</button></div></div>);
-          case 'about': return (
-            <div className="w-full max-w-4xl p-10 bg-gray-900/80 backdrop-blur-xl rounded-[3rem] border-2 border-blue-500/30 shadow-2xl overflow-y-auto max-h-[85vh] text-center">
-              <button onClick={() => setPage('home')} className="mb-8 p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><ArrowLeft /></button>
-              <div className="space-y-10">
-                <section className="text-center">
-                  <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-neon-blue"><User size={48} /></div>
-                  <h2 className="text-3xl font-black mb-2 uppercase">Halo! Selamat datang di platform ini.</h2>
-                  <p className="text-lg leading-relaxed text-center">Saya <span className="text-blue-400 font-bold">Amelia Rafika Prameswari Basuki</span> (NIM: 2302422068), seorang mahasiswa yang memiliki dedikasi dalam dunia pendidikan. Website ini adalah prototipe media pembelajaran digital untuk pemelajar bahasa Jepang pemula.</p>
-                </section>
-                <hr className="border-white/10" />
-                <section className="text-left">
-                  <h3 className="text-2xl font-black text-blue-400 mb-4 flex items-center gap-3 uppercase italic"><Target /> Misi dan Tujuan</h3>
-                  <p className="leading-relaxed">Website ini dikembangkan untuk mengeksplorasi efektivitas media interaktif dalam mempermudah penguasaan kosa kata JLPT N5 secara digital.</p>
-                </section>
+              <div class="absolute inset-0 bg-blue-900 rounded-xl backface-hidden flex flex-col items-center justify-center p-4 text-center border-2 border-blue-400 overflow-hidden rotate-y-180">
+                <p class="text-[10px] font-black uppercase text-blue-300 mb-1 w-full">Arti</p>
+                <p class="text-sm font-black leading-tight w-full mb-2">${v.translation}</p>
+                ${exampleHtml}
               </div>
             </div>
-          );
-          case 'categories': return (<div className="w-full max-w-4xl p-6 text-center relative"><div className="flex items-center gap-4 mb-2"><button onClick={() => setPage('home')} className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl transition-all"><ArrowLeft /></button><h2 className="text-4xl font-black uppercase tracking-tight text-center w-full">Kategori Materi</h2></div><p className="text-blue-400 font-black mb-8 animate-pulse text-sm uppercase tracking-widest text-center w-full">Pilih kategori materi yang ingin kamu pelajari di bawah ini.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-14">{Object.keys(VOCAB_DATA).map(cat => (<button key={cat} className="bg-gray-800 p-8 rounded-3xl border-b-4 border-blue-700 hover:bg-gray-750 flex justify-between items-center transition-all shadow-2xl group" onClick={() => { setSelectedCat(cat); setPage('subcategories'); }}><span className="text-2xl font-black uppercase">{cat}</span><ChevronRight className="text-blue-500 group-hover:translate-x-2 transition-transform" /></button>))}</div><div className="bg-gradient-to-br from-indigo-900 to-purple-950 p-8 rounded-[3rem] border-2 border-white/10 shadow-2xl"><h3 className="text-2xl font-black text-yellow-400 mb-8 flex items-center justify-center gap-3 italic uppercase"><Gamepad2 size={32}/> Main Game Seru!</h3><div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{['Memory Match', 'Speed Translator', 'Word Scramble'].map((g, i) => (<button key={i} className={`p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all ${i===0?'bg-blue-600':i===1?'bg-pink-600':'bg-yellow-600 text-black'}`} onClick={() => setPage(i===0?'gameMatch':i===1?'gameSpeed':'gameScramble')}>{g}</button>))}</div></div></div>);
-          case 'subcategories': if (!selectedCat || !VOCAB_DATA[selectedCat]) return null; return (<div className="w-full max-w-md p-6 text-center"><div className="flex items-center gap-5 mb-2"><button onClick={() => { setSelectedCat(null); setPage('categories'); }} className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl"><ArrowLeft size={24} /></button><h2 className="text-3xl font-black text-blue-400 uppercase tracking-widest leading-tight text-center w-full">{selectedCat}</h2></div><p className="text-blue-400 font-black mb-10 animate-pulse text-xs uppercase tracking-widest text-center w-full">Pilih salah satu kategori yang akan kamu pelajari.</p><div className="space-y-4">{Object.keys(VOCAB_DATA[selectedCat]).map(sub => (<button key={sub} className="w-full bg-gray-800 p-6 rounded-[2rem] border-l-8 border-blue-500 font-black text-xl hover:bg-blue-600 transition-all flex justify-between items-center text-left shadow-xl" onClick={() => { setSelectedCat(`${selectedCat} > ${sub}`); setPage('modeSelect'); }}>{sub}<BookOpen size={24} className="opacity-20" /></button>))}</div></div>);
-          case 'modeSelect': if (!selectedCat) return null; return (<div className="text-center p-14 bg-gray-800 rounded-[3rem] border-4 border-blue-600 shadow-2xl max-w-sm relative"><button onClick={() => { const parts = selectedCat.split(' > '); setSelectedCat(parts[0]); setPage('subcategories'); }} className="absolute top-6 left-6 p-2 bg-gray-700 rounded-full"><ArrowLeft size={20} /></button><h2 className="text-4xl font-black mb-2 uppercase italic text-center w-full">{selectedCat.split(' > ').pop()}</h2><p className="text-blue-400 font-black mb-10 text-xs uppercase tracking-widest text-center w-full">Pilih mode belajar kamu.</p><div className="flex flex-col gap-5"><button className="bg-blue-600 py-5 px-10 rounded-2xl font-black text-xl shadow-neon-blue hover:bg-blue-500" onClick={() => { const vocab = getVocabFromPath(selectedCat); if (vocab) { setCurrentDeck(shuffleArray(vocab)); setFlippedStates({}); setPage('flashcards'); } }}><RefreshCw className="inline mr-2" /> Flashcard</button><button className="bg-purple-600 py-5 px-10 rounded-2xl font-black text-xl shadow-lg hover:bg-purple-500" onClick={() => startQuiz(selectedCat)}><Brain className="inline mr-2" /> Kuis</button></div><button className="mt-10 text-gray-500 font-black uppercase text-sm tracking-widest" onClick={() => { const parts = selectedCat.split(' > '); setSelectedCat(parts[0]); setPage('subcategories'); }}>Kembali Ke Sub-Kategori</button></div>);
-          case 'flashcards': return (<div className="w-full max-w-5xl p-4 flex flex-col items-center text-center"><div className="w-full flex justify-start mb-6"><button onClick={() => setPage('modeSelect')} className="p-3 bg-gray-800 rounded-full"><ArrowLeft /></button></div><h2 className="text-2xl font-black mb-2 text-blue-400 uppercase italic text-center w-full">{selectedCat?.split(' > ').pop()}</h2><p className="text-blue-400 font-black mb-8 animate-pulse text-xs uppercase text-center w-full">Ketuk flashcard di bawah ini untuk melihat maksud.</p><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 w-full overflow-y-auto max-h-[60vh] p-4 custom-scrollbar">{currentDeck.map((v, i) => (<div key={i} className="aspect-[3/4]"><FlashcardTile content={v} isFlipped={!!flippedStates[i]} onClick={() => setFlippedStates(p => ({...p, [i]: !p[i]}))} /></div>))}</div><button className="mt-12 bg-gray-700 py-4 px-20 rounded-full font-black text-lg" onClick={() => setPage('modeSelect')}>Selesai</button></div>);
-          case 'quiz': if (quizState.finished) return (<div className="bg-gray-800 p-12 rounded-[3rem] border-2 border-blue-500 text-center max-w-sm w-full shadow-2xl"><Trophy size={80} className="text-yellow-400 mx-auto mb-6" /><h2 className="text-4xl font-black mb-2 uppercase text-center">KUIS SELESAI</h2><p className="text-6xl font-black text-blue-400 mb-12 text-center">Skor: {quizState.score}</p><div className="flex flex-col gap-4"><button className="bg-blue-600 py-4 rounded-2xl font-black text-lg hover:bg-blue-500" onClick={() => startQuiz(selectedCat)}>Ulang Kuis</button><button className="bg-gray-700 py-4 rounded-2xl font-black text-lg" onClick={() => setPage('review')}>Analisis Jawaban</button><button className="text-gray-500 font-black mt-6" onClick={() => setPage('modeSelect')}>Kembali</button></div></div>); return (<div className="w-full max-w-2xl flex flex-col items-center p-4 text-center"><div className="flex justify-between w-full mb-8 items-center px-6"><button onClick={() => setPage('modeSelect')} className="p-2 bg-gray-800 rounded-full"><ArrowLeft size={20} /></button><div className="font-black text-blue-400 italic text-2xl uppercase">Skor: {quizState.score}</div><div className="flex gap-1.5 bg-black/30 px-4 py-2 rounded-full">{[...Array(3)].map((_, i) => ( <Heart key={i} fill={i < quizState.lives ? "#ef4444" : "transparent"} className={i < quizState.lives ? "text-red-500" : "text-gray-700"} size={28} />))}</div></div><div className="w-full h-4 bg-gray-800 rounded-full mb-14 overflow-hidden border border-white/5 p-1"><div className="h-full bg-blue-500 rounded-full transition-all shadow-neon-blue" style={{ width: `${quizState.questions.length > 0 ? (quizState.idx / quizState.questions.length) * 100 : 0}%` }}></div></div><QuizMultipleChoice key={quizState.idx} question={quizState.questions[quizState.idx]} onAnswer={handleQuizAnswer} /></div>);
-          case 'review': return (<div className="w-full max-w-4xl p-6 text-center"><div className="w-full flex justify-start mb-8"><button onClick={() => setPage('quiz')} className="p-3 bg-gray-800 rounded-full"><ArrowLeft /></button></div><h2 className="text-5xl font-black text-center mb-14 uppercase text-blue-400">Analisis Belajar</h2><div className="grid gap-6 max-h-[65vh] overflow-y-auto p-4 custom-scrollbar text-left">{quizState.history.map((item, i) => ( <div key={i} className={`p-8 rounded-[2rem] border-l-[12px] bg-gray-800 shadow-2xl ${item.isCorrect ? 'border-green-500' : 'border-red-500'}`}> <div className="flex justify-between items-start mb-5"> <span className="text-5xl font-black tracking-tighter uppercase text-left w-full cursor-pointer hover:text-blue-300" onClick={() => speakJapanese(item.question.word)}>{item.question.word}</span> {item.isCorrect ? <CheckCircle2 className="text-green-500" size={40} /> : <XCircle className="text-red-500" size={40} />} </div> <p className="text-green-400 font-black text-2xl mb-2 italic uppercase">Maksud: {item.question.answer}</p> {!item.isCorrect && <p className="text-red-400 font-black mb-6 text-xl text-left uppercase">Jawaban Anda: {item.selectedAnswer}</p>} </div> ))}</div></div>);
-          case 'gameMatch': return <MemoryMatchGame onBack={() => setPage('categories')} allVocab={allGameVocab} />;
-          case 'gameSpeed': return <SpeedGame onBack={() => setPage('categories')} allVocab={allGameVocab} />;
-          case 'gameScramble': return <ScrambleGame onBack={() => setPage('categories')} allVocab={allGameVocab} />;
-          default: return null;
-        }
-      };
+          </div>
+        `;
+      });
+    }
 
-      return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans overflow-hidden relative">
-          <canvas ref={confettiCanvasRef} className="absolute inset-0 pointer-events-none z-50 w-full h-full" />
-          <AIHelpChat />
-          <AnimatePresence mode="wait">
-            <motion.div key={page + (page === 'quiz' ? quizState.finished : '')} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 1.05, y: -10 }} transition={{ duration: 0.25 }} className="w-full flex justify-center">{renderContent()}</motion.div>
-          </AnimatePresence>
-          {showTutorial && <HowToPlayModal onClose={() => setShowTutorial(false)} />}
+    function toggleFlashcard(idx) {
+      const card = document.getElementById(`fc-${idx}`);
+      if (card.style.transform === 'rotateY(180deg)') {
+        card.style.transform = 'rotateY(0deg)';
+      } else {
+        card.style.transform = 'rotateY(180deg)';
+      }
+    }
+
+    // =========================================================
+    // 6. KUIS
+    // =========================================================
+    function setupQuiz(vocabList) {
+      const selectedVocab = shuffleArray(vocabList).slice(0, 10);
+      const questions = selectedVocab.map(v => {
+        const others = vocabList.filter(x => x.translation !== v.translation);
+        return { 
+          word: v.word, 
+          answer: v.translation, 
+          options: shuffleArray([...shuffleArray(others).slice(0, 3).map(o => o.translation), v.translation]) 
+        };
+      });
+      appState.quiz = { questions, idx: 0, score: 0, lives: 3, history: [] };
+      renderQuizUI();
+      navigateTo('quiz');
+    }
+
+    function renderQuizUI() {
+      const qz = appState.quiz;
+      document.getElementById('quiz-score-display').innerText = `Skor: ${qz.score}`;
+      
+      let livesHtml = '';
+      for(let i=0; i<3; i++) {
+        livesHtml += `<i class="fa-solid fa-heart text-2xl ${i < qz.lives ? 'text-red-500' : 'text-gray-700'}"></i>`;
+      }
+      document.getElementById('quiz-lives').innerHTML = livesHtml;
+      
+      const progress = qz.questions.length > 0 ? (qz.idx / qz.questions.length) * 100 : 0;
+      document.getElementById('quiz-progress').style.width = `${progress}%`;
+
+      const qContainer = document.getElementById('quiz-question-container');
+      const currentQ = qz.questions[qz.idx];
+
+      let optionsHtml = currentQ.options.map(opt => `
+        <button class="bg-gray-700 py-5 px-6 rounded-2xl font-bold transition-all shadow-md hover:bg-gray-600 active:scale-95 w-full" onclick="handleQuizAnswer('${opt.replace(/'/g, "\\'")}')">
+          ${opt}
+        </button>
+      `).join('');
+
+      qContainer.innerHTML = `
+        <div class="text-center bg-gray-800 text-blue-300 rounded-3xl p-10 w-full max-w-sm mb-10 shadow-lg border-2 border-blue-500 animate-[fadeIn_0.3s]">
+          <p class="text-4xl font-black tracking-tighter cursor-pointer text-white" onclick="speakJapanese('${currentQ.word}')">${currentQ.word}</p>
+          <button onclick="speakJapanese('${currentQ.word}')" class="mt-4 w-12 h-12 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-colors mx-auto flex items-center justify-center text-white"><i class="fa-solid fa-volume-high text-xl"></i></button>
         </div>
-      );
-    };
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
+          ${optionsHtml}
+        </div>
+      `;
+    }
 
-    // Render ke DOM
-    const root = createRoot(document.getElementById('root'));
-    root.render(<App />);
+    function handleQuizAnswer(selectedAns) {
+      const qz = appState.quiz;
+      const currentQ = qz.questions[qz.idx];
+      const isCorrect = selectedAns === currentQ.answer;
+
+      qz.history.push({ question: currentQ, selectedAnswer: selectedAns, isCorrect });
+
+      if (isCorrect) {
+        qz.score += 100;
+      } else {
+        qz.lives = Math.max(0, qz.lives - 1);
+      }
+
+      qz.idx += 1;
+      
+      // Jeda sejenak untuk efek visual jika diperlukan, lalu lanjut
+      setTimeout(() => {
+        if (qz.lives <= 0 || qz.idx >= qz.questions.length) {
+          finishQuiz();
+        } else {
+          renderQuizUI();
+        }
+      }, 300);
+    }
+
+    function finishQuiz() {
+      if (appState.quiz.lives > 0) triggerConfetti();
+      document.getElementById('review-header-result').classList.remove('hidden');
+      document.getElementById('review-analysis').classList.add('hidden');
+      document.getElementById('review-final-score').innerText = `Skor: ${appState.quiz.score}`;
+      navigateTo('review');
+    }
+
+    function showQuizAnalysis() {
+      document.getElementById('review-header-result').classList.add('hidden');
+      document.getElementById('review-analysis').classList.remove('hidden');
+      
+      const list = document.getElementById('review-list');
+      list.innerHTML = appState.quiz.history.map((item, i) => `
+        <div class="p-8 rounded-[2rem] border-l-[12px] bg-gray-800 shadow-2xl ${item.isCorrect ? 'border-green-500' : 'border-red-500'}">
+          <div class="flex justify-between items-start mb-5">
+            <span class="text-5xl font-black tracking-tighter uppercase text-left w-full cursor-pointer hover:text-blue-300" onclick="speakJapanese('${item.question.word}')">${item.question.word}</span>
+            <i class="fa-solid ${item.isCorrect ? 'fa-circle-check text-green-500' : 'fa-circle-xmark text-red-500'} text-4xl"></i>
+          </div>
+          <p class="text-green-400 font-black text-xl mb-2 italic uppercase">Maksud: ${item.question.answer}</p>
+          ${!item.isCorrect ? `<p class="text-red-400 font-black text-lg text-left uppercase">Jawaban Anda: ${item.selectedAnswer}</p>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // 7. GAMES
+    // =========================================================
+    function startGame(gameId) {
+      if(ALL_GAME_VOCAB.length < 8) return alert("Kosakata database belum cukup!");
+      
+      appState.game.id = gameId;
+      appState.game.state = {};
+      clearGameTimer();
+      
+      document.getElementById('game-title').innerText = 
+        gameId === 'match' ? 'Memory Match' : 
+        gameId === 'speed' ? 'Speed Translator' : 'Word Scramble';
+      
+      const area = document.getElementById('game-area');
+      area.innerHTML = '';
+      
+      if(gameId === 'match') initMatchGame(area);
+      if(gameId === 'speed') initSpeedGame(area);
+      if(gameId === 'scramble') initScrambleGame(area);
+
+      navigateTo('game');
+    }
+
+    function endGame() {
+      clearGameTimer();
+      navigateTo('categories');
+    }
+
+    function clearGameTimer() {
+      if(appState.game.timer) {
+        clearInterval(appState.game.timer);
+        appState.game.timer = null;
+      }
+    }
+
+    // --- GAME 1: MEMORY MATCH ---
+    function initMatchGame(container, level = 1) {
+      appState.game.state = { level, flipped: [], solved: [], cards: [], previewing: true };
+      const pairCount = level === 1 ? 3 : level === 2 ? 4 : level === 3 ? 6 : 8;
+      
+      const selected = shuffleArray(ALL_GAME_VOCAB).slice(0, pairCount);
+      let gameCards = [];
+      selected.forEach((v, i) => {
+        gameCards.push({ id: `a-${i}`, val: v.word, mId: i });
+        gameCards.push({ id: `b-${i}`, val: v.translation, mId: i });
+      });
+      appState.game.state.cards = shuffleArray(gameCards);
+
+      renderMatchGame(container);
+      
+      setTimeout(() => {
+        appState.game.state.previewing = false;
+        renderMatchGame(container);
+      }, 2000 + (level * 400));
+    }
+
+    function renderMatchGame(container) {
+      const { level, cards, flipped, solved, previewing } = appState.game.state;
+      
+      let html = previewing ? `<div class="mb-6 text-yellow-400 font-black animate-pulse flex items-center justify-center gap-3 text-lg uppercase tracking-widest"><i class="fa-solid fa-eye text-2xl"></i> Hafalkan Posisi!</div>` : '';
+      
+      html += `<div class="flex flex-wrap justify-center gap-3 w-full max-w-3xl mx-auto overflow-y-auto max-h-[60vh] p-2 custom-scrollbar">`;
+      cards.forEach(c => {
+        const isOpen = previewing || flipped.includes(c.id) || solved.includes(c.id);
+        const transform = isOpen ? 'rotateY(180deg)' : 'rotateY(0deg)';
+        html += `
+          <div class="w-[calc(33%-12px)] sm:w-[calc(25%-12px)] aspect-square relative perspective-1000 cursor-pointer" onclick="handleMatchClick('${c.id}', ${c.mId})">
+            <div class="w-full h-full transform-style-3d relative" style="transform: ${transform}">
+              <div class="absolute inset-0 bg-gray-800 rounded-2xl border-2 border-gray-700 flex items-center justify-center backface-hidden shadow-2xl"><i class="fa-solid fa-gamepad opacity-10 text-3xl"></i></div>
+              <div class="absolute inset-0 bg-blue-600 rounded-2xl border-2 border-blue-400 flex items-center justify-center p-2 text-center rotate-y-180 backface-hidden shadow-neon-blue">
+                <span class="text-[9px] sm:text-xs font-black leading-tight uppercase">${c.val}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+
+      if (solved.length === cards.length && cards.length > 0) {
+        html += `
+          <div class="mt-12 text-center bg-gray-800 p-8 rounded-3xl border-2 border-yellow-500 shadow-2xl animate-[fadeIn_0.5s]">
+            <i class="fa-solid fa-trophy text-yellow-400 text-5xl mb-3"></i>
+            <h3 class="text-2xl font-black mb-6 uppercase">Luar Biasa! Berhasil!</h3>
+            <button class="bg-green-600 px-12 py-3 rounded-full font-black shadow-lg hover:scale-105 transition-all" onclick="initMatchGame(document.getElementById('game-area'), ${level + 1})">Level Berikutnya</button>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    function handleMatchClick(id, mId) {
+      let state = appState.game.state;
+      if (state.previewing || state.flipped.length === 2 || state.solved.includes(id) || state.flipped.includes(id)) return;
+      
+      state.flipped.push(id);
+      renderMatchGame(document.getElementById('game-area'));
+
+      if (state.flipped.length === 2) {
+        const firstId = state.flipped[0];
+        const firstCard = state.cards.find(x => x.id === firstId);
+        
+        if (firstCard.mId === mId) {
+          state.solved.push(firstId, id);
+          state.flipped = [];
+          renderMatchGame(document.getElementById('game-area'));
+        } else {
+          setTimeout(() => {
+            state.flipped = [];
+            renderMatchGame(document.getElementById('game-area'));
+          }, 800);
+        }
+      }
+    }
+
+    // --- GAME 2: SPEED TRANSLATOR ---
+    function initSpeedGame(container) {
+      appState.game.state = { score: 0, time: 8, target: null, options: [], isOver: false };
+      nextSpeedRound(container);
+    }
+
+    function nextSpeedRound(container) {
+      let state = appState.game.state;
+      const target = ALL_GAME_VOCAB[Math.floor(Math.random() * ALL_GAME_VOCAB.length)];
+      const others = shuffleArray(ALL_GAME_VOCAB.filter(v => v.translation !== target.translation)).slice(0, 3);
+      
+      state.target = target;
+      state.options = shuffleArray([...others.map(o => o.translation), target.translation]);
+      state.time = 8;
+      
+      renderSpeedGame(container);
+
+      clearGameTimer();
+      appState.game.timer = setInterval(() => {
+        state.time -= 1;
+        if(state.time <= 0) {
+          state.isOver = true;
+          clearGameTimer();
+        }
+        renderSpeedGame(container);
+      }, 1000);
+    }
+
+    function renderSpeedGame(container) {
+      let state = appState.game.state;
+      if(state.isOver) {
+        container.innerHTML = `
+          <div class="text-center py-10 w-full max-w-lg bg-gray-800 rounded-3xl p-8 border-2 border-pink-500 shadow-2xl">
+            <i class="fa-solid fa-circle-xmark text-red-500 text-6xl mb-6"></i>
+            <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter">WAKTU HABIS!</h2>
+            <p class="text-gray-400 mb-10 font-bold text-2xl">Skor Akhir: ${state.score}</p>
+            <button class="bg-pink-600 px-12 py-4 rounded-full font-black mb-4 w-full shadow-lg hover:bg-pink-500 transition-colors" onclick="initSpeedGame(document.getElementById('game-area'))">Main Lagi</button>
+            <button class="text-gray-500 font-bold mt-4" onclick="endGame()">Keluar</button>
+          </div>
+        `;
+        return;
+      }
+
+      let optionsHtml = state.options.map(opt => `
+        <button class="bg-gray-700 py-5 rounded-2xl font-bold hover:bg-pink-600 transition-all border border-white/5 text-lg shadow-lg w-full" onclick="handleSpeedAnswer('${opt.replace(/'/g, "\\'")}')">${opt}</button>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl">
+          <div class="flex justify-between w-full mb-10 items-center px-2">
+            <div class="font-black text-3xl ${state.time < 4 ? 'text-red-500' : 'text-pink-400'}"><i class="fa-solid fa-stopwatch mr-2"></i> ${state.time}s</div>
+            <div class="font-black text-2xl uppercase">Skor: ${state.score}</div>
+          </div>
+          <div class="text-6xl font-black mb-14 uppercase tracking-tighter text-white animate-[fadeIn_0.2s]">${state.target.word}</div>
+          <div class="grid grid-cols-1 gap-4 w-full">${optionsHtml}</div>
+        </div>
+      `;
+    }
+
+    function handleSpeedAnswer(ans) {
+      let state = appState.game.state;
+      if (ans === state.target.translation) {
+        state.score += 10;
+        nextSpeedRound(document.getElementById('game-area'));
+      } else {
+        state.isOver = true;
+        clearGameTimer();
+        renderSpeedGame(document.getElementById('game-area'));
+      }
+    }
+
+    // --- GAME 3: WORD SCRAMBLE ---
+    function initScrambleGame(container) {
+      appState.game.state = { score: 0, lives: 3, target: null, scrambled: [], selected: [], isFinished: false };
+      nextScrambleRound(container);
+    }
+
+    function nextScrambleRound(container) {
+      let state = appState.game.state;
+      const validItems = ALL_GAME_VOCAB.filter(v => v.word.length > 1);
+      const target = validItems[Math.floor(Math.random() * validItems.length)];
+      
+      state.target = target;
+      state.scrambled = shuffleArray(target.word.split(''));
+      state.selected = [];
+      
+      renderScrambleGame(container);
+    }
+
+    function renderScrambleGame(container) {
+      let state = appState.game.state;
+
+      if(state.isFinished) {
+        container.innerHTML = `
+          <div class="text-center p-12 bg-gray-800 rounded-3xl border-4 border-yellow-600 shadow-2xl max-w-sm w-full">
+            <i class="fa-solid fa-trophy text-yellow-400 text-6xl mb-4"></i>
+            <h2 class="text-3xl font-black mb-2 uppercase">GAME OVER</h2>
+            <p class="text-5xl font-black text-blue-400 mb-10">${state.score}</p>
+            <button class="bg-yellow-600 px-10 py-3 rounded-full font-black shadow-lg text-gray-900 w-full mb-4 hover:bg-yellow-500" onclick="initScrambleGame(document.getElementById('game-area'))">Main Lagi</button>
+            <button class="text-gray-500 font-bold" onclick="endGame()">Keluar</button>
+          </div>
+        `;
+        return;
+      }
+
+      let livesHtml = '';
+      for(let i=0; i<3; i++) { livesHtml += `<i class="fa-solid fa-heart text-2xl ${i < state.lives ? 'text-red-500' : 'text-gray-700'}"></i>`; }
+
+      let selectedHtml = state.selected.map((s, i) => `
+        <div class="w-14 h-14 bg-yellow-600 rounded-2xl flex items-center justify-center font-black text-3xl shadow-xl cursor-pointer hover:bg-red-600" onclick="removeScrambleChar(${i})">${s.char}</div>
+      `).join('');
+
+      let scrambleHtml = state.scrambled.map((char, i) => {
+        const isUsed = state.selected.some(s => s.idx === i);
+        return `<button ${isUsed ? 'disabled' : ''} class="w-16 h-16 rounded-2xl font-black text-3xl transition-all shadow-xl ${isUsed ? 'bg-gray-700 opacity-20' : 'bg-gray-600 hover:bg-yellow-500 hover:scale-110'}" onclick="addScrambleChar('${char}', ${i})">${char}</button>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-yellow-500 shadow-2xl relative text-center">
+          <div class="flex justify-between w-full mb-8 items-center px-2">
+            <div class="font-black text-blue-400 text-2xl uppercase">Skor: ${state.score}</div>
+            <div class="flex gap-1 bg-black/30 p-2 rounded-full border border-white/5">${livesHtml}</div>
+          </div>
+          <h2 class="text-2xl font-black text-yellow-500 mb-2 uppercase tracking-tighter italic">Word Scramble</h2>
+          <p class="text-gray-400 mb-10 px-4 leading-relaxed">Susun Huruf Hiragana: <br/><span class="text-white font-black text-2xl italic">"${state.target?.translation}"</span></p>
+          <div class="flex flex-wrap gap-2 mb-4 h-auto min-h-[4rem] items-center justify-center border-b-4 border-gray-600 w-full p-2">${selectedHtml}</div>
+          <p class="text-[10px] text-gray-500 mb-8 uppercase font-bold">*Klik kotak kuning untuk menghapus</p>
+          <div class="flex flex-wrap justify-center gap-4 mb-10">${scrambleHtml}</div>
+        </div>
+      `;
+    }
+
+    function addScrambleChar(char, idx) {
+      let state = appState.game.state;
+      if (state.selected.length >= state.target.word.length) return;
+      
+      state.selected.push({ char, idx });
+      renderScrambleGame(document.getElementById('game-area'));
+
+      if (state.selected.length === state.target.word.length) {
+        const result = state.selected.map(s => s.char).join('');
+        if (result === state.target.word) {
+          state.score += 20;
+          setTimeout(() => nextScrambleRound(document.getElementById('game-area')), 800);
+        } else {
+          if (state.lives > 1) {
+            state.lives -= 1;
+            setTimeout(() => nextScrambleRound(document.getElementById('game-area')), 1000);
+          } else {
+            state.lives = 0;
+            state.isFinished = true;
+            renderScrambleGame(document.getElementById('game-area'));
+          }
+        }
+      }
+    }
+
+    function removeScrambleChar(indexToRemove) {
+      appState.game.state.selected.splice(indexToRemove, 1);
+      renderScrambleGame(document.getElementById('game-area'));
+    }
+
+    // =========================================================
+    // 8. AI CHAT LOGIC (Gemini)
+    // =========================================================
+    let chatHistory = [{ role: 'model', text: 'Halo! Saya Sensei AI. Ada kosakata yang membingungkan? Tanya saja saya ya!' }];
+    
+    function toggleChat() {
+      const chatWin = document.getElementById('ai-chat-window');
+      const chatBtn = document.getElementById('ai-chat-btn');
+      if(chatWin.classList.contains('hidden')) {
+        chatWin.classList.remove('hidden');
+        chatBtn.classList.add('hidden');
+        renderChat();
+      } else {
+        chatWin.classList.add('hidden');
+        chatBtn.classList.remove('hidden');
+      }
+    }
+
+    function renderChat(isTyping = false) {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = chatHistory.map(msg => `
+        <div class="flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[85%] p-3 rounded-[1.2rem] text-xs font-bold leading-relaxed ${msg.role === 'user' ? 'bg-blue-600 rounded-tr-none shadow-lg' : 'bg-gray-800 text-slate-200 rounded-tl-none border border-white/5 shadow-md'}">${msg.text}</div>
+        </div>
+      `).join('');
+
+      if(isTyping) {
+        container.innerHTML += `<div class="flex justify-start animate-pulse"><div class="bg-gray-800 text-slate-400 p-2 rounded-xl rounded-tl-none text-[10px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Sensei sedang berpikir...</div></div>`;
+      }
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function handleChatKeyPress(e) {
+      if(e.key === 'Enter') sendChatMessage();
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if(!text) return;
+
+      input.value = '';
+      chatHistory.push({ role: 'user', text });
+      renderChat(true);
+
+      if(!apiKey) {
+        setTimeout(() => {
+          chatHistory.push({ role: 'model', text: 'Sensei belum bisa membalas karena API Key belum diatur di kode.'});
+          renderChat();
+        }, 1000);
+        return;
+      }
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const contents = [
+          ...chatHistory.slice(0, -1).map(msg => ({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] })),
+          { role: "user", parts: [{ text }] }
+        ];
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            contents, 
+            systemInstruction: { parts: [{ text: "Anda adalah 'Sensei AI' di aplikasi Ureshii Nihongo. Bantu pembelajar memahami kosakata JLPT N5. Jawab dalam Bahasa Indonesia yang ramah, singkat, dan beri contoh jika perlu." }] } 
+          })
+        });
+        
+        const result = await response.json();
+        const reply = result.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Sensei sedang istirahat.";
+        chatHistory.push({ role: 'model', text: reply });
+      } catch (err) {
+        chatHistory.push({ role: 'model', text: 'Koneksi terputus. Pastikan internetmu aktif!' });
+      }
+      renderChat();
+    }
+
   </script>
 </body>
 </html>
