@@ -1787,9 +1787,9 @@ function renderGameSpeed() {
 }
 
 function startScrambleGame() {
+    navigate('gameScramble');
     state.scrambleState = { target: null, scrambled: [], selected: [], score: 0, lives: 3, isFinished: false };
     initScrambleRound();
-    navigate('gameScramble');
 }
 
 function initScrambleRound() {
@@ -1884,7 +1884,7 @@ function renderGameScramble() {
         </div>
     `;
 }
-
+    
 // --- AI CHAT LOGIC ---
 
 function toggleChat() {
