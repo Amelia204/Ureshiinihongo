@@ -32,7 +32,12 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 20px; border: 2px solid #020617; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 
-        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center relative">
@@ -1219,7 +1224,7 @@ function renderCategories() {
                 </button>
                 <h2 class="text-4xl font-black uppercase tracking-tight text-center w-full">Kategori Materi</h2>
             </div>
-            <p class="text-blue-400 font-black mb-8 text-sm uppercase tracking-widest text-center w-full">Pilih kategori materi yang ingin kamu pelajari di bawah ini.</p>
+            <p class="text-blue-400 font-black mb-8 animate-pulse-slow text-sm uppercase tracking-widest text-center w-full">Pilih kategori materi yang ingin kamu pelajari di bawah ini.</p>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-14">
                 ${catHTML}
@@ -1257,9 +1262,7 @@ function renderSubcategories() {
                 </button>
                 <h2 class="text-3xl font-black text-blue-400 uppercase tracking-widest leading-tight text-center w-full">${state.selectedCat}</h2>
             </div>
-            <p class="text-blue-400 font-black mb-8 text-sm uppercase tracking-widest text-center w-full">
-    Pilih kategori materi yang ingin kamu pelajari di bawah ini.
-</p>
+            <p class="text-blue-400 font-black mb-10 animate-pulse-slow text-xs uppercase tracking-widest text-center w-full">Pilih salah satu kategori yang akan kamu pelajari.</p>
             <div class="space-y-4">
                 ${subsHTML}
             </div>
@@ -1411,7 +1414,7 @@ function renderFlashcards() {
                 <div class="w-12"></div> <!-- Spacer -->
             </div>
             
-            <p class="text-blue-400 font-black mb-4 text-xs uppercase w-full text-center">Ketuk flashcard untuk melihat arti.</p>
+            <p class="text-blue-400 font-black mb-4 animate-pulse-slow text-xs uppercase w-full text-center">Ketuk flashcard untuk melihat arti.</p>
             
             <div class="text-gray-400 font-black tracking-widest text-sm mb-6 bg-gray-800/50 px-6 py-2 rounded-full border border-white/5">
                 ${idx + 1} / ${state.currentDeck.length}
