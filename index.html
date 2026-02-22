@@ -45,9 +45,6 @@
     <!-- Container Utama Aplikasi -->
     <div id="app" class="w-full flex justify-center p-4"></div>
 
-    <!-- Container Chat AI -->
-    <div id="ai-chat-container"></div>
-
     <!-- Modal Tutorial -->
     <div id="tutorial-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
         <div class="bg-gray-900 border-2 border-blue-500/50 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl">
@@ -1883,87 +1880,6 @@ function renderGameScramble() {
         </div>
     `;
 }
-    
-// --- AI CHAT LOGIC ---
-
-function toggleChat() {
-    state.chatState.isOpen = !state.chatState.isOpen;
-    renderChat();
-}
-
-async function handleSendMsg() {
-    let inputEl = document.getElementById('ai-chat-input');
-    let text = inputEl.value.trim();
-    if(!text || state.chatState.isTyping) return;
-    
-    inputEl.value = '';
-    state.chatState.messages.push({ role: 'user', text: text });
-    state.chatState.isTyping = true;
-    renderChat();
-    
-    const response = await fetchAIResponse(text, state.chatState.messages.slice(0, -1)); // exclude the latest user message from history for context if needed, but fetchAIResponse adds it anyway. Let's pass whole history.
-    
-    state.chatState.messages.push({ role: 'model', text: response });
-    state.chatState.isTyping = false;
-    renderChat();
-}
-
-function renderChat() {
-    let chatDiv = document.getElementById('ai-chat-container');
-    let cs = state.chatState;
-
-    if(!cs.isOpen) {
-        chatDiv.innerHTML = `
-            <div class="fixed bottom-6 right-6 z-[100]">
-                <button onclick="toggleChat()" class="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center shadow-neon-blue hover:scale-110 active:scale-95 transition-all text-white animate-pulse-slow">
-                    <i data-lucide="message-square" class="w-8 h-8"></i>
-                </button>
-            </div>
-        `;
-    } else {
-        let msgHTML = cs.messages.map(msg => `
-            <div class="flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-                <div class="max-w-[85%] p-3 rounded-[1.2rem] text-xs font-bold leading-relaxed ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none shadow-lg' : 'bg-gray-800 text-slate-200 rounded-tl-none border border-white/5 shadow-md'}">
-                    ${msg.text}
-                </div>
-            </div>
-        `).join('');
-
-        let typingHTML = cs.isTyping ? `
-            <div class="flex justify-start animate-pulse">
-                <div class="bg-gray-800 text-slate-400 p-2 rounded-xl rounded-tl-none text-[10px] flex items-center gap-2">
-                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Sensei sedang berpikir...
-                </div>
-            </div>
-        ` : '';
-
-        chatDiv.innerHTML = `
-            <div class="fixed bottom-6 right-6 z-[100]">
-                <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm pointer-events-auto">
-                    <div class="bg-gray-900 border-2 border-blue-500 rounded-[2.5rem] w-[320px] sm:w-[350px] h-[480px] shadow-2xl flex flex-col overflow-hidden relative">
-                        <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
-                            <div class="flex items-center gap-2 font-black uppercase text-xs tracking-wider">
-                                <i data-lucide="sparkles" class="w-4 h-4"></i> Tanya Sensei AI
-                            </div>
-                            <button onclick="toggleChat()" class="hover:bg-blue-700 p-1 rounded-full transition-colors">
-                                <i data-lucide="x" class="w-6 h-6"></i>
-                            </button>
-                        </div>
-                        <div id="ai-chat-scroll" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-950 text-left">
-                            ${msgHTML}
-                            ${typingHTML}
-                        </div>
-                        <div class="p-4 bg-gray-900 border-t border-white/10 flex gap-2">
-                            <input type="text" id="ai-chat-input" onkeypress="if(event.key === 'Enter') handleSendMsg()" placeholder="Ketik pertanyaan..." class="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-all" />
-                            <button onclick="handleSendMsg()" class="bg-blue-600 p-2 rounded-xl text-white hover:bg-blue-500 transition-all shadow-lg active:scale-90 flex items-center justify-center">
-                                <i data-lucide="send" class="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
         // Auto scroll to bottom
         setTimeout(() => {
             let scrollEl = document.getElementById('ai-chat-scroll');
@@ -1991,23 +1907,22 @@ function renderApp() {
         case 'gameScramble': content = renderGameScramble(); break;
     }
     
-    // Animasi fade in sederhana untuk pergantian halaman
-    appDiv.style.opacity = '0';
-    appDiv.style.transform = 'scale(0.98)';
+    // Langsung update konten tanpa animasi transparan
+    appDiv.innerHTML = content;
     
-    setTimeout(() => {
-        appDiv.innerHTML = content;
-        appDiv.style.transition = 'all 0.3s ease-out';
-        appDiv.style.opacity = '1';
-        appDiv.style.transform = 'scale(1)';
+    // Reset style agar tetap terlihat (mencegah sisa animasi sebelumnya)
+    appDiv.style.opacity = '1';
+    appDiv.style.transform = 'scale(1)';
+    
+    // Render icon
+    if (window.lucide) {
         lucide.createIcons();
-    }, 150);
+    }
 }
 
 // --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
     renderApp();
-    renderChat();
 });
 
 </script>
